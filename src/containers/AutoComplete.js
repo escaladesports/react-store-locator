@@ -64,6 +64,8 @@ class AutoComplete extends Component {
    if (place.name) {
     updatedAddress.searchInput = place.name
    }
+   updatedAddress.place = place;
+
    this.props.getValue(updatedAddress)
 
    if (place.formatted_address) {

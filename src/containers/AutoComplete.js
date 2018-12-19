@@ -96,6 +96,7 @@ class AutoComplete extends Component {
   delete updatedInput['google']
   delete updatedInput['googleApiKey']
   delete updatedInput['loaded']
+  delete updatedInput['customOptions']
 
   return (
    <input

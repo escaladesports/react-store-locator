@@ -11,10 +11,37 @@ import infoStyle from './InfoStyle'
 import searchStyle from './SearchStyle'
 import { createClusters } from '../utils/clustering'
 import { objectsAreEqual } from '../utils/objects'
+import { arraysAreEqual } from '../utils/arrays'
 import { strToFixed } from '../utils/string'
 import { addressFromPlace } from '../utils/parse-place'
 import { enableEnterKey } from '../utils/suggestion-event'
 import { mapState } from '../state'
+
+const getLocationsBounds = (locations) => {
+	const bounds = new google.maps.LatLngBounds()
+	locations.map(location => {
+		bounds.extend(
+			new google.maps.LatLng(
+				parseFloat(location.lat),
+				parseFloat(location.lng)
+			)
+		)
+	})
+	return bounds
+}
+
+// adds distance from the center for each location
+const locationsWithDistance = (locations, center) => {
+	return locations.map(location => {
+		const distanceMeters = geolib.getDistance(center, {
+			lat: location.lat,
+			lng: location.lng
+		})
+		const distanceMiles = (distanceMeters * 0.000621371).toFixed(2)
+		location.distanceFromCenter = distanceMiles
+		return { ...location }
+	})
+}
 
 export default class Map extends Component {
 	constructor(props) {
@@ -31,13 +58,13 @@ export default class Map extends Component {
 		this.searchByQuery = this.searchByQuery.bind(this)
 
 		this.state = {
-			updatedLocations: this.props.locations,
+			updatedLocations: props.locations, // locations + show state (toggled on/off)
 			center: { lat: 0, lng: 0 },
 			zoom: 6,
 			place: null,
 			mapLoaded: false,
 			props: null,
-			newBounds: null,
+			newBounds: null, // does not seem to change
 			searchInput: ``
 		}
 	}
@@ -62,7 +89,39 @@ export default class Map extends Component {
 		}
 	}
 
-	// update visible locations on map change
+	// state locations (including show state) within map bounds
+	locationsInBounds(locations, bounds) {
+		if (bounds && bounds.ne && bounds.sw) {
+			const { ne, sw } = bounds;
+			return locations.filter(location => {
+				const lat = strToFixed(location.lat, 6)
+				const lng = strToFixed(location.lng, 6)
+				if (
+					lat >= strToFixed(sw.lat, 6) &&
+					lat <= strToFixed(ne.lat, 6) &&
+					lng >= strToFixed(sw.lng, 6) &&
+					lng <= strToFixed(ne.lng, 6)
+				) {
+					return location
+				}
+			})
+		}
+		else {
+			console.error('invalid bounds')
+			return locations;
+		}
+	}
+
+	// callback on locations in bounds change, either on map change (zoom, center) or locations change
+	callBackOnChange (updatedLocations, bounds, center) {
+		const updatedLocationsInBounds = this.locationsInBounds(updatedLocations, bounds);
+		const updatedLocationsInBoundsWithDistance = locationsWithDistance(updatedLocationsInBounds, center);
+		if (this.props.onChange && updatedLocationsInBoundsWithDistance) {
+			this.props.onChange(updatedLocationsInBoundsWithDistance)
+		}
+	}
+
+	// update clusters + callback onChange with locations currently visible
 	onMapChanged(props) {
 		if (!props || !this.state.mapLoaded) return
 		const bounds = {},
@@ -90,81 +149,51 @@ export default class Map extends Component {
 					? props.bounds.sw.lng - 360
 					: props.bounds.sw.lng
 		}
-		const { ne, sw } = bounds
-		const { locations } = this.props
-		// locations within the map bounds
 
-		const foundLocations = locations.filter(location => {
-			const lat = strToFixed(location.lat, 6)
-			const lng = strToFixed(location.lng, 6)
-			if (
-				lat >= strToFixed(sw.lat, 6) &&
-				lat <= strToFixed(ne.lat, 6) &&
-				lng >= strToFixed(sw.lng, 6) &&
-				lng <= strToFixed(ne.lng, 6)
-			) {
-				return location
-			}
-		})
+		// locations within the map bounds
+		const { updatedLocations } = this.state
+		const updatedLocationsInBounds = this.locationsInBounds(updatedLocations, bounds);
+
 		// if enableClusters is enabled create clusters and set them to the state
 		if (this.props.enableClusters) {
 			const { cluster } = this.props
 			this.setState({
 				updatedLocations: createClusters(
 					props,
-					foundLocations.length > 0 ? foundLocations : locations,
+					updatedLocationsInBounds.length > 0 ? updatedLocationsInBounds : updatedLocations,
 					cluster && cluster.radius,
 					cluster && cluster.extent,
 					cluster && cluster.nodeSize,
 					cluster && cluster.minZoom,
 					cluster && cluster.maxZoom
-				)
+				),
+				center
 			})
 		}
 
-		// find the distance from the center for each location
-		foundLocations.map(location => {
-			const distanceMeters = geolib.getDistance(center, {
-				lat: location.lat,
-				lng: location.lng
-			})
-			const distanceMiles = (distanceMeters * 0.000621371).toFixed(2)
-			location.distanceFromCenter = distanceMiles
-			return { ...location }
-		})
-
-		if (!this.props.enableClusters) {
-			this.setState({ updatedLocations: foundLocations })
-		}
-
-		if (this.props.onChange) {
-			if (foundLocations) {
-				this.props.onChange(foundLocations)
-			}
-		}
+		this.callBackOnChange(updatedLocations, bounds, center);
 	}
 
 	toggleLocation(id) {
-		const locations = this.state.updatedLocations.map(location => ({
+		const updatedLocations = this.state.updatedLocations.map(location => ({
 			...location,
 			show: location.id === id ? !location.show : false
 		}))
-		this.setState({ updatedLocations: locations })
+		this.setState({ updatedLocations })
 	}
 
 	closeLocation(id) {
-		const locations = this.state.updatedLocations.map(location => ({
+		const updatedLocations = this.state.updatedLocations.map(location => ({
 			...location,
 			show: false
 		}))
-		this.setState({ updatedLocations: locations })
+		this.setState({ updatedLocations })
 	}
 
 	createMapOptions() {
-		const { mapStyle } = this.props
-		const { styles } = this.props.mapOptions
+		const { mapStyle, mapOptions } = this.props
 		return {
-			styles: styles || mapStyle,
+			styles: mapOptions && mapOptions.styles || mapStyle,
 			...this.props.mapOptions
 		}
 	}
@@ -232,49 +261,35 @@ export default class Map extends Component {
 
 	getLocationsViewport() {
 		let center, zoom
+		const { locations, defaultCenter, defaultZoom } = this.props
 
-		if (this.props.locations.length === 1) {
+		if (locations.length === 1) {
 			center = {
-				lat: parseFloat(this.props.locations[0].lat),
-				lng: parseFloat(this.props.locations[0].lng)
+				lat: parseFloat(locations[0].lat),
+				lng: parseFloat(locations[0].lng)
 			}
 		} else {
-			const bounds = new google.maps.LatLngBounds()
-			this.props.locations.map(location => {
-				bounds.extend(
-					new google.maps.LatLng(
-						parseFloat(location.lat),
-						parseFloat(location.lng)
-					)
-				)
-			})
+			const bounds = getLocationsBounds(locations)
 			const viewport = this.viewPortWithBounds(bounds)
 			center = viewport.center
 			zoom = viewport.zoom
 		}
 
 		return {
-			center: center || this.props.defaultCenter,
-			zoom: zoom || this.props.defaultZoom
+			center: center || defaultCenter,
+			zoom: zoom || defaultZoom
 		}
 	}
 
 	getCurrentArea() {
-		const bounds = new google.maps.LatLngBounds()
-		this.props.locations.map(location => {
-			bounds.extend(
-				new google.maps.LatLng(
-					parseFloat(location.lat),
-					parseFloat(location.lng)
-				)
-			)
-		})
+		const { locations } = this.props
+		const bounds = getLocationsBounds(locations)
 
 		let center
-		if (this.props.locations.length === 1) {
+		if (locations.length === 1) {
 			center = {
-				lat: parseFloat(this.props.locations[0].lat),
-				lng: parseFloat(this.props.locations[0].lng)
+				lat: parseFloat(locations[0].lat),
+				lng: parseFloat(locations[0].lng)
 			}
 		} else {
 			center = {
@@ -374,15 +389,39 @@ export default class Map extends Component {
 	}
 
 	componentDidUpdate(prevProps, prevState) {
-		const { initSearch, place } = this.props
-		if (place && prevProps.place !== place && place !== this.state.place) {
-			this.moveMap(place)
+		const { initSearch: propsInitSearch, place: propsPlace, locations: propsLocations } = this.props
+		const { initSearch: prevPropsInitSearch, place: prevPropsPlace, locations: prevPropsLocations } = prevProps
+		const { place: statePlace, updatedLocations: stateUpdatedLocations, center } = this.state
+		const { place: prevStatePlace, updatedLocations: prevStateUpdatedLocations } = prevState
+
+		// add or remove any new or deleted location
+		if (propsLocations)
+		{
+			const prevPropsLocationsArray = prevPropsLocations ? prevPropsLocations : [];
+			const prevPropsLocationsIds = prevPropsLocationsArray.map(location => location.id);
+			const propsLocationsIds = propsLocations.map(location => location.id);
+			if (!arraysAreEqual(prevPropsLocationsIds, propsLocationsIds))
+			{
+				// get added locations (in propsLocations and not in prevPropsLocations)
+				const addedLocations = propsLocations.filter(propsLocation => !prevPropsLocationsIds.includes(propsLocation.id));
+				// get removed locations (in prevPropsLocations and not in propsLocations)
+				const removedLocations = prevPropsLocationsArray.filter(prevPropsLocation => !propsLocationsIds.includes(prevPropsLocation.id));
+				// update state immutably (merge & filter) - keep show state of existing locations
+				const updatedLocations = [...stateUpdatedLocations, ...addedLocations].filter(location => !removedLocations.map(loc => loc.id).includes(location.id))
+				this.setState({ updatedLocations });
+				this.callBackOnChange(updatedLocations, this.map && this.map.getBounds(), center);
+			}
 		}
-		if (this.state.place && this.state.place !== prevState.place) {
-			this.moveMap(this.state.place)
+	
+
+		if (propsPlace && prevPropsPlace !== propsPlace && propsPlace !== statePlace) {
+			this.moveMap(propsPlace)
 		}
-		if (initSearch && prevProps.initSearch !== initSearch) {
-			this.searchByQuery(initSearch)
+		if (statePlace && statePlace !== prevStatePlace) {
+			this.moveMap(statePlace)
+		}
+		if (propsInitSearch && prevPropsInitSearch !== propsInitSearch) {
+			this.searchByQuery(propsInitSearch)
 		}
 	}
 
@@ -465,7 +504,10 @@ export default class Map extends Component {
 			? this.props.clusterPin.component
 			: this.props.defaultClusterPin
 
-		const { updatedLocations, zoom, center } = this.state
+		const { zoom, center, updatedLocations } = this.state
+
+		const updatedLocationsInBounds = this.locationsInBounds(updatedLocations, this.map && this.map.getBounds());
+
 		return (
 			<div
 				style={{
@@ -508,7 +550,7 @@ export default class Map extends Component {
 					onChange={this.onMapChanged}
 					gestureHandling={this.props.gestureHandling || `cooperative`}
 				>
-					{updatedLocations.map(location => {
+					{updatedLocationsInBounds.map(location => {
 						if (location.cluster_id) {
 							return (
 								<ClusterPin

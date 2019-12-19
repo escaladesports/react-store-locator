@@ -49,7 +49,7 @@ export default class Map extends Component {
 			console.warn(
 				`Must include zoom: ${zoom} and center: ${JSON.stringify(
 					center
-				)} to update map properly. Try using the updateMap function passed through this.props. 
+				)} to update map properly. Try using the updateMap function passed through this.props.
 				Example:
 				onClick={() => {
 					updateMap({
@@ -103,39 +103,38 @@ export default class Map extends Component {
 				lng >= strToFixed(sw.lng, 6) &&
 				lng <= strToFixed(ne.lng, 6)
 			) {
-				return location
+				// find the distance from the center for each location
+				const distanceMeters = geolib.getDistance(center, {
+					lat: location.lat,
+					lng: location.lng
+				})
+				const distanceMiles = (distanceMeters * 0.000621371).toFixed(2)
+				return { ...location, distanceFromCenter: distanceMiles }
 			}
 		})
+
+		// console.log(`FOUND LOCATIONS`, foundLocations)
 		// if enableClusters is enabled create clusters and set them to the state
 		if (this.props.enableClusters) {
 			const { cluster } = this.props
+			const clusters = createClusters(
+				props,
+				foundLocations.length > 0 ? foundLocations : locations,
+				cluster && cluster.radius,
+				cluster && cluster.extent,
+				cluster && cluster.nodeSize,
+				cluster && cluster.minZoom,
+				cluster && cluster.maxZoom
+			)
+			// console.log(`CLUSTERS: `, clusters)
+
 			this.setState({
-				updatedLocations: createClusters(
-					props,
-					foundLocations.length > 0 ? foundLocations : locations,
-					cluster && cluster.radius,
-					cluster && cluster.extent,
-					cluster && cluster.nodeSize,
-					cluster && cluster.minZoom,
-					cluster && cluster.maxZoom
-				)
+				updatedLocations: clusters
 			})
-		}
-
-		// find the distance from the center for each location
-		foundLocations.map(location => {
-			const distanceMeters = geolib.getDistance(center, {
-				lat: location.lat,
-				lng: location.lng
-			})
-			const distanceMiles = (distanceMeters * 0.000621371).toFixed(2)
-			location.distanceFromCenter = distanceMiles
-			return { ...location }
-		})
-
-		if (!this.props.enableClusters) {
+		} else {
 			this.setState({ updatedLocations: foundLocations })
 		}
+
 
 		if (this.props.onChange) {
 			if (foundLocations) {

@@ -15,17 +15,20 @@ const createClusters = (
 		extent: extent || 512,
 		nodeSize: nodeSize || 64,
 		minZoom: minZoom || 0,
-		maxZoom: maxZoom || 16
+		maxZoom: maxZoom || 16,
+		// log: true,
 	})
-	return index
-		.load(
-			markers.map(marker => {
-				return {
-					...marker,
-					geometry: { coordinates: [marker.lng, marker.lat] }
-				}
-			})
-		)
+	const points = markers.map(marker => {
+		return {
+			...marker,
+			geometry: { coordinates: [marker.lng, marker.lat] }
+		}
+	})
+	// console.log(`POINTS: `, JSON.stringify(points, null , 2))
+	// console.log(`BOUNDS: `, JSON.stringify(bounds, null, 2))
+	// console.log(`ZOOM: `, zoom)
+	const clusters = index
+		.load(points)
 		.getClusters(
 			[bounds.sw.lng, bounds.sw.lat, bounds.ne.lng, bounds.ne.lat],
 			zoom
@@ -44,6 +47,12 @@ const createClusters = (
 				  }
 				: cluster
 		)
+
+	if(!clusters.length) {
+		return markers
+	} else {
+		return clusters
+	}
 }
 
 export { createClusters }

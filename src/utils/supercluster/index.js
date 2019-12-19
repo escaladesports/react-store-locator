@@ -37,7 +37,8 @@ export default class Supercluster {
         for (let i = 0; i < points.length; i++) {
             if (!points[i].geometry) continue;
             clusters.push(createPointCluster(points[i], i));
-        }
+				}
+
         this.trees[maxZoom + 1] = new window.KDBush(clusters, getX, getY, nodeSize, Float32Array);
 
         if (log) console.timeEnd(timerId);
@@ -60,6 +61,7 @@ export default class Supercluster {
     }
 
     getClusters(bbox, zoom) {
+				const { log } = this.options
         let minLng = ((bbox[0] + 180) % 360 + 360) % 360 - 180;
         const minLat = Math.max(-90, Math.min(90, bbox[1]));
         let maxLng = bbox[2] === 180 ? 180 : ((bbox[2] + 180) % 360 + 360) % 360 - 180;
@@ -73,12 +75,11 @@ export default class Supercluster {
             const westernHem = this.getClusters([-180, minLat, maxLng, maxLat], zoom);
             return easternHem.concat(westernHem);
         }
-
-        const tree = this.trees[this._limitZoom(zoom)];
+				const tree = this.trees[this._limitZoom(zoom)];
         const ids = tree.range(lngX(minLng), latY(maxLat), lngX(maxLng), latY(minLat));
-        const clusters = [];
+				const clusters = [];
         for (const id of ids) {
-            const c = tree.points[id];
+						const c = tree.points[id];
             clusters.push(c.numPoints ? getClusterJSON(c) : this.points[c.index]);
         }
         return clusters;

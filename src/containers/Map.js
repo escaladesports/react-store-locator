@@ -94,24 +94,24 @@ export default class Map extends Component {
 		const { locations } = this.props
 		// locations within the map bounds
 
-		const foundLocations = locations.filter(location => {
-			const lat = strToFixed(location.lat, 6)
-			const lng = strToFixed(location.lng, 6)
-			if (
-				lat >= strToFixed(sw.lat, 6) &&
-				lat <= strToFixed(ne.lat, 6) &&
-				lng >= strToFixed(sw.lng, 6) &&
-				lng <= strToFixed(ne.lng, 6)
-			) {
-				// find the distance from the center for each location
-				const distanceMeters = geolib.getDistance(center, {
-					lat: location.lat,
-					lng: location.lng
-				})
-				const distanceMiles = (distanceMeters * 0.000621371).toFixed(2)
-				return { ...location, distanceFromCenter: distanceMiles }
-			}
-		})
+		const foundLocations = locations
+			.filter(location => {
+				const lat = strToFixed(location.lat, 6)
+				const lng = strToFixed(location.lng, 6)
+				return lat >= strToFixed(sw.lat, 6) &&
+					lat <= strToFixed(ne.lat, 6) &&
+					lng >= strToFixed(sw.lng, 6) &&
+					lng <= strToFixed(ne.lng, 6)
+			})
+			.map(location => {
+					// find the distance from the center for each location
+					const distanceMeters = geolib.getDistance(center, {
+						lat: location.lat,
+						lng: location.lng
+					})
+					const distanceMiles = (distanceMeters * 0.000621371).toFixed(2)
+					return { ...location, distanceFromCenter: distanceMiles }
+			})
 
 		// console.log(`FOUND LOCATIONS`, foundLocations)
 		// if enableClusters is enabled create clusters and set them to the state
@@ -138,6 +138,8 @@ export default class Map extends Component {
 
 		if (this.props.onChange) {
 			if (foundLocations) {
+				console.log(`SENDING BACK FOUND LOCATIONS`)
+				console.log(`First Location: `, foundLocations[0])
 				this.props.onChange(foundLocations)
 			}
 		}

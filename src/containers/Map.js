@@ -500,7 +500,7 @@ export default class Map extends Component {
 				<GoogleMap
 					ref={ref => (this.googleMapRef = ref)}
 					onGoogleApiLoaded={this.handleGoogleMapApiLoad}
-					bootstrapURLKeys={{ key: this.props.googleApiKey }}
+					bootstrapURLKeys={{ key: this.props.googleApiKey, region: this.props.region || `us`}}
 					yesIWantToUseGoogleMapApiInternals
 					onTilesLoaded={this.props.tilesRendered}
 					center={this.props.center || center}

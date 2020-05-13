@@ -70,9 +70,8 @@ export default class Map extends Component {
 				lat: props.center.lat > 90 ? props.center.lat - 180 : props.center.lat,
 				lng: props.center.lng > 180 ? props.center.lng - 360 : props.center.lng
 			}
-			if(logs){
+			if(this.props.logs){
 				console.log(center, bounds)
-
 			}
 		bounds.ne = {
 			lat:

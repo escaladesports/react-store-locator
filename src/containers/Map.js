@@ -1,3 +1,4 @@
+/*global google*/
 import React, { Component } from 'react'
 import GoogleMap from 'google-map-react'
 import { fitBounds } from 'google-map-react/utils'
@@ -10,7 +11,7 @@ import Info from './Info'
 import infoStyle from './InfoStyle'
 import searchStyle from './SearchStyle'
 import { createClusters } from '../utils/clustering'
-import { objectsAreEqual } from '../utils/objects'
+// import { objectsAreEqual } from '../utils/objects'
 import { strToFixed } from '../utils/string'
 import { addressFromPlace } from '../utils/parse-place'
 import { enableEnterKey } from '../utils/suggestion-event'
@@ -65,34 +66,37 @@ export default class Map extends Component {
 	// update visible locations on map change
 	onMapChanged(props) {
 		if (!props || !this.state.mapLoaded) return
-		const bounds = {},
-			center = {
-				lat: props.center.lat > 90 ? props.center.lat - 180 : props.center.lat,
-				lng: props.center.lng > 180 ? props.center.lng - 360 : props.center.lng
-			}
-			if(this.props.logs){
-				console.log(center, bounds)
-			}
-		bounds.ne = {
-			lat:
-				props.bounds.ne.lat > 90
-					? props.bounds.ne.lat - 180
-					: props.bounds.ne.lat,
-			lng:
-				props.bounds.ne.lng > 180
-					? props.bounds.ne.lng - 360
-					: props.bounds.ne.lng
+		if(this.props.logs) { 
+			console.log(`MAP CHANGE PROPS: `, props)
 		}
-		bounds.sw = {
-			lat:
-				props.bounds.sw.lat > 90
-					? props.bounds.sw.lat - 180
-					: props.bounds.sw.lat,
-			lng:
-				props.bounds.sw.lng > 180
-					? props.bounds.sw.lng - 360
-					: props.bounds.sw.lng
+
+		const bounds = {
+			ne: {
+				lat:
+					props.bounds.ne.lat > 90
+						? props.bounds.ne.lat - 180
+						: props.bounds.ne.lat,
+				lng:
+					props.bounds.ne.lng > 180
+						? props.bounds.ne.lng - 360
+						: props.bounds.ne.lng
+			},
+			sw: {
+				lat:
+					props.bounds.sw.lat > 90
+						? props.bounds.sw.lat - 180
+						: props.bounds.sw.lat,
+				lng:
+					props.bounds.sw.lng > 180
+						? props.bounds.sw.lng - 360
+						: props.bounds.sw.lng
+			}
 		}
+		const center = {
+			lat: props.center.lat > 90 ? props.center.lat - 180 : props.center.lat,
+			lng: props.center.lng > 180 ? props.center.lng - 360 : props.center.lng
+		}
+
 		const { ne, sw } = bounds
 		const { locations } = this.props
 		// locations within the map bounds
@@ -141,8 +145,10 @@ export default class Map extends Component {
 
 		if (this.props.onChange) {
 			if (foundLocations) {
-				console.log(`SENDING BACK FOUND LOCATIONS`)
-				console.log(`First Location: `, foundLocations[0])
+				if(this.props.logs){
+					console.log(`SENDING BACK FOUND LOCATIONS`)
+					console.log(`First Location: `, foundLocations[0])
+				}
 				this.props.onChange(foundLocations)
 			}
 		}
@@ -351,14 +357,6 @@ export default class Map extends Component {
 		let initialCenter, initialZoom
 		// if initial location set by initSearch (D), location will be changed in handleGoogleMapApiLoad
 		if (!this.props.initSearch) {
-			// if initial location set by initialCenter and initialZoom
-			if (this.props.initialCenter) {
-				initialCenter = this.props.initialCenter
-			}
-			if (this.props.initialZoom) {
-				initialZoom = this.props.initialZoom
-			}
-			
 			// A. if initial location set by place => center map on it
 			if (this.props.place) {
 				const { center, zoom } = this.getPlaceViewport(this.props.place)
@@ -368,16 +366,21 @@ export default class Map extends Component {
 			// B. if initial location not set => center map on location(s) if any
 			else if (this.props.locations && this.props.locations.length > 0) {
 				const { center, zoom } = this.getLocationsViewport()
-				initialCenter = center
-				initialZoom = zoom
-			}
+				initialCenter = this.props.initialCenter || center
+				initialZoom = this.props.initialZoom || zoom
+			} 
 
-		
+			// if initial location set by initialCenter and initialZoom
+			else {
+				initialCenter = this.props.initialCenter || this.props.defaultZoom
+				initialZoom = this.props.initialZoom || this.props.defaultCenter
+			}
+			this.setState({
+				zoom: initialZoom,
+				center: initialCenter ,
+			})
 		}
-		this.setState({
-			zoom: initialZoom || this.props.defaultZoom,
-			center: initialCenter || this.props.defaultCenter
-		})
+		this.setState({ mapLoaded: true })
 	}
 
 	componentDidUpdate(prevProps, prevState) {
@@ -426,7 +429,7 @@ export default class Map extends Component {
 					})
 				}
 				// correct result from google PlacesService => set map location to it
-				else if (status == google.maps.places.PlacesServiceStatus.OK) {
+				else if (status === google.maps.places.PlacesServiceStatus.OK) {
 					const { center, zoom } = this.getPlaceViewport(result)
 					this.setState({
 						center: center,
@@ -454,18 +457,20 @@ export default class Map extends Component {
 
 		this.setState({ mapLoaded: true })
 
-		// if initial location was set before map was loaded in componentDidMount (case A, B or C), callback onMapChanged with correct view data to update visible locations
+
+		// if initial location was set before map was loaded in componentDidMount (case A, B or C), 
+		// callback onMapChanged with correct view data to update visible locations
 		// this is not needed for case D because onMapChanged is automatically called when map is loaded
 		if (!this.props.initSearch) {
-				if (this.props.locations && this.props.locations.length > 0) {
-					const { center, zoom, size, bounds } = this.getCurrentArea()
-					this.onMapChanged({ 
-						center: this.props.initialCenter || center, 
-						zoom: this.props.initialZoom || zoom, 
-						size, 
-						bounds 
-					})
-			}
+			// 	if (this.props.locations && this.props.locations.length > 0) {
+			// 		const { center, zoom, size, bounds } = this.getCurrentArea()
+			// 		this.onMapChanged({ 
+			// 			center: this.props.initialCenter || center, 
+			// 			zoom: this.props.initialZoom || zoom, 
+			// 			size, 
+			// 			bounds 
+			// 		})
+			// }
 		}
 	}
 
@@ -536,7 +541,7 @@ export default class Map extends Component {
 									updateMap={updates => this.onClusterClick(updates)}
 									{...location}
 									pinProps={
-										(this.props.cluster && this.props.cluster.pinProps) || null
+									  this.props.cluster ? this.props.cluster.pinProps : null
 									}
 								/>
 							)
@@ -561,7 +566,7 @@ export default class Map extends Component {
 													k === 'lng' ||
 													k === 'show'
 												)
-													return
+													return null
 												return (
 													<div
 														key={k}

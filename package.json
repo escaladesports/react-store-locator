@@ -37,6 +37,7 @@
 		"google-maps-react": "^2.0.2",
 		"react-icons": "^2.2.7",
 		"react-load-script": "^0.0.6",
-		"statable": "^0.2.3"
+		"statable": "^0.2.3",
+		"supercluster": "^7.0.0"
 	}
 }

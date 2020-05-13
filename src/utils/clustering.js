@@ -1,4 +1,4 @@
-import supercluster from './supercluster'
+import supercluster from 'supercluster'
 
 const createClusters = (
 	mapProps,

@@ -171,10 +171,9 @@ export default class Map extends Component {
 	}
 
 	createMapOptions() {
-		const { mapStyle } = this.props
-		const { styles } = this.props.mapOptions
+		const { mapStyle, mapOptions } = this.props
 		return {
-			styles: styles || mapStyle,
+			styles: mapOptions && mapOptions.styles || mapStyle,
 			...this.props.mapOptions
 		}
 	}

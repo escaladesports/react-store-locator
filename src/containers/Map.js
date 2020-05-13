@@ -70,6 +70,10 @@ export default class Map extends Component {
 				lat: props.center.lat > 90 ? props.center.lat - 180 : props.center.lat,
 				lng: props.center.lng > 180 ? props.center.lng - 360 : props.center.lng
 			}
+			if(logs){
+				console.log(center, bounds)
+
+			}
 		bounds.ne = {
 			lat:
 				props.bounds.ne.lat > 90
@@ -348,7 +352,13 @@ export default class Map extends Component {
 		let initialCenter, initialZoom
 		// if initial location set by initSearch (D), location will be changed in handleGoogleMapApiLoad
 		if (!this.props.initSearch) {
-			
+			// if initial location set by initialCenter and initialZoom
+			if (this.props.initialCenter) {
+				initialCenter = this.props.initialCenter
+			}
+			if (this.props.initialZoom) {
+				initialZoom = this.props.initialZoom
+			}
 			
 			// A. if initial location set by place => center map on it
 			if (this.props.place) {
@@ -363,13 +373,7 @@ export default class Map extends Component {
 				initialZoom = zoom
 			}
 
-			// C. if initial location set by initialCenter and initialZoom
-			if (this.props.initialCenter) {
-				initialCenter = this.props.initialCenter
-			}
-			if (this.props.initialZoom) {
-				initialZoom = this.props.initialZoom
-			}
+		
 		}
 		this.setState({
 			zoom: initialZoom || this.props.defaultZoom,

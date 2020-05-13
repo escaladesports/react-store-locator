@@ -348,24 +348,27 @@ export default class Map extends Component {
 		let initialCenter, initialZoom
 		// if initial location set by initSearch (D), location will be changed in handleGoogleMapApiLoad
 		if (!this.props.initSearch) {
-			// A. if initial location set by initialCenter and initialZoom
-			if (this.props.initialCenter) {
-				initialCenter = this.props.initialCenter
-			}
-			if (this.props.initialZoom) {
-				initialZoom = this.props.initialZoom
-			}
-			// B. if initial location set by place => center map on it
+			
+			
+			// A. if initial location set by place => center map on it
 			if (this.props.place) {
 				const { center, zoom } = this.getPlaceViewport(this.props.place)
 				initialCenter = center
 				initialZoom = zoom
 			}
-			// C. if initial location not set => center map on location(s) if any
+			// B. if initial location not set => center map on location(s) if any
 			else if (this.props.locations && this.props.locations.length > 0) {
 				const { center, zoom } = this.getLocationsViewport()
 				initialCenter = center
 				initialZoom = zoom
+			}
+
+			// C. if initial location set by initialCenter and initialZoom
+			if (this.props.initialCenter) {
+				initialCenter = this.props.initialCenter
+			}
+			if (this.props.initialZoom) {
+				initialZoom = this.props.initialZoom
 			}
 		}
 		this.setState({
@@ -459,6 +462,10 @@ export default class Map extends Component {
 	}
 
 	render() {
+		const { logs } = this.props
+		if(logs){
+			console.log(`ZOOM:`, zoom)
+		}
 		let Pin = this.props.pin.component || this.props.pin
 		let ClusterPin = this.props.cluster
 			? this.props.cluster.component

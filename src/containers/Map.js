@@ -453,11 +453,11 @@ export default class Map extends Component {
 
 		// if initial location was set before map was loaded in componentDidMount (case A, B or C), callback onMapChanged with correct view data to update visible locations
 		// this is not needed for case D because onMapChanged is automatically called when map is loaded
-		if (!this.props.initSearch && !this.props.initialCenter) {
+		if (!this.props.initSearch) {
 				if (this.props.locations && this.props.locations.length > 0) {
 					const { center, zoom, size, bounds } = this.getCurrentArea()
 					this.onMapChanged({ 
-						center, 
+						center: this.props.initialCenter || center, 
 						zoom: this.props.initialZoom || zoom, 
 						size, 
 						bounds 

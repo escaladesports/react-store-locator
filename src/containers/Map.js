@@ -509,11 +509,11 @@ export default class Map extends Component {
 					onChange={this.onMapChanged}
 					gestureHandling={this.props.gestureHandling || `cooperative`}
 				>
-					{updatedLocations.map(location => {
+					{updatedLocations.map((location, i) => {
 						if (location.cluster_id) {
 							return (
 								<ClusterPin
-									key={location.id}
+									key={`${location.id}-${i}`}
 									lat={location.lat}
 									lng={location.lng}
 									updateMap={updates => this.onClusterClick(updates)}

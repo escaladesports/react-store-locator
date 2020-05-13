@@ -453,19 +453,22 @@ export default class Map extends Component {
 
 		// if initial location was set before map was loaded in componentDidMount (case A, B or C), callback onMapChanged with correct view data to update visible locations
 		// this is not needed for case D because onMapChanged is automatically called when map is loaded
-		if (!this.props.initSearch) {
-			if (this.props.locations && this.props.locations.length > 0) {
-				const { center, zoom, size, bounds } = this.getCurrentArea()
-				this.onMapChanged({ center, zoom, size, bounds })
+		if (!this.props.initSearch && !this.props.initialCenter) {
+				if (this.props.locations && this.props.locations.length > 0) {
+					const { center, zoom, size, bounds } = this.getCurrentArea()
+					this.onMapChanged({ 
+						center, 
+						zoom: this.props.initialZoom || zoom, 
+						size, 
+						bounds 
+					})
 			}
 		}
 	}
 
 	render() {
 		const { logs } = this.props
-		if(logs){
-			console.log(`ZOOM:`, zoom)
-		}
+
 		let Pin = this.props.pin.component || this.props.pin
 		let ClusterPin = this.props.cluster
 			? this.props.cluster.component
@@ -474,6 +477,10 @@ export default class Map extends Component {
 			: this.props.defaultClusterPin
 
 		const { updatedLocations, zoom, center } = this.state
+		if(logs){
+			console.log(`ZOOM: `, zoom)
+			console.log(`Center: `, center)
+		}
 		return (
 			<div
 				style={{
